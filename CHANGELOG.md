@@ -48,3 +48,10 @@
 - 新增鼠标/触摸拖拽旋转：左右拖动调整平面旋转角，上下拖动调整俯仰角。
 - 新增“重置视角”按钮，恢复默认白模角度。
 - 保留 V7 的左侧入户/电梯厅、北侧设备平台、右侧主卧套房外轮廓修正。
+## 2026-07-02 V9 React Three Fiber 重构
+
+- 从单文件 SVG 伪 3D 重构为 Vite + React + TypeScript + React Three Fiber。
+- 新增 `src/floorplan.ts` 数据层，房间、墙体、门洞、矮墙从数据生成。
+- 使用 Three.js 真实 3D 场景和 OrbitControls，支持旋转、缩放、平移。
+- 保留左侧入户/电梯厅、北侧设备平台、右侧主卧套房外轮廓重点修正。
+- `vite.config.ts` 增加外网预览 allowedHosts，支持懒猫转发域名验收。

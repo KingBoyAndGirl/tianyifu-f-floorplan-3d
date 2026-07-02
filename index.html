@@ -1,78 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>天一府 F户型｜可拖拽旋转 V8</title>
-<style>
-:root{--bg:#f3f0ea;--panel:#fffdf9;--ink:#241f19;--muted:#776b5e;--line:#b9aa98;--floor:#eee8de;--floor2:#e8dfd2;--wet:#dfe9f4;--bal:#dcebdc;--wall:#fffaf0;--wall2:#d7cab7;--wall3:#bba98f;--cut:#f3f0ea;--accent:#c7823c}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 35% 12%,#fffaf1 0,#f3f0ea 42%,#e9e1d5 100%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",Arial,sans-serif;color:var(--ink)}.app{max-width:1500px;margin:0 auto;padding:18px}.head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:12px}.head h1{font-size:24px;margin:0 0 7px}.head p{margin:0;color:var(--muted);line-height:1.55}.badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.badge{background:#fff8eb;border:1px solid #d9c9b4;border-radius:999px;padding:7px 10px;font-size:13px;color:#5d5043}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}.toolbar button{border:1px solid #c8b79f;background:#fffdf8;border-radius:10px;padding:8px 12px;font-weight:700;color:#3b3128;cursor:pointer}.grid{display:grid;grid-template-columns:minmax(820px,1fr) 330px;gap:14px}.stage{position:relative;height:750px;touch-action:none;background:linear-gradient(145deg,#fffdf8,#eee4d6);border:1px solid #d7c6ae;border-radius:20px;overflow:hidden;box-shadow:0 20px 55px rgba(44,35,25,.13)}svg{display:block;width:100%;height:100%}.status{position:absolute;left:16px;top:14px;background:rgba(255,253,248,.92);border:1px solid #dacbb8;border-radius:12px;padding:8px 10px;font-size:13px;color:#5f5347;z-index:2}.compass{position:absolute;right:15px;top:14px;background:rgba(255,253,248,.92);border:1px solid #dacbb8;border-radius:14px;padding:10px 13px;text-align:center;font-weight:800;color:#4d4136;z-index:2}.compass .ew{display:flex;gap:38px}.panel{background:var(--panel);border:1px solid #dacbb8;border-radius:18px;padding:14px;box-shadow:0 14px 38px rgba(44,35,25,.08)}.panel h2{font-size:17px;margin:2px 0 10px}.panel h3{font-size:14px;margin:16px 0 8px;color:#5c5044}.panel ul{padding-left:18px;margin:8px 0;color:#544a40;line-height:1.65;font-size:13.5px}.note{font-size:13px;line-height:1.65;background:#f7efe3;border:1px solid #e2d3bf;border-radius:12px;padding:10px;color:#695d51}.refs{display:grid;gap:8px}.refs img{width:100%;border-radius:12px;border:1px solid #d8c8b2;background:#eee}.refUnder{opacity:.13}.hideRef .refUnder{display:none}.strongRef .refUnder{opacity:.42}.clean .roomLabel,.clean .dim,.clean .heightLabel{display:none}.floor{fill:var(--floor);stroke:#b9aa98;stroke-width:1.1}.wet{fill:var(--wet);stroke:#9baec0;stroke-width:1.1}.bal{fill:var(--bal);stroke:#9db295;stroke-width:1.1}.wood{fill:#eadbc6;stroke:#b9aa98;stroke-width:1.1}.wallTop{fill:var(--wall);stroke:#8d7d6a;stroke-width:1.2}.wallSide{fill:var(--wall2);stroke:#8d7d6a;stroke-width:.8}.wallDark{fill:var(--wall3);stroke:#806e59;stroke-width:.8}.lowTop{fill:#f4efe4;stroke:#8d7d6a;stroke-width:1}.glass{stroke:#8db6c8;stroke-width:5;stroke-linecap:round;opacity:.85}.doorGap{stroke:#f3f0ea;stroke-width:10;stroke-linecap:round}.roomLabel{font-size:11px;font-weight:800;fill:#4c4035;paint-order:stroke;stroke:#fffaf0;stroke-width:3px}.dim{font-size:12px;font-weight:800;fill:#8b5d27;paint-order:stroke;stroke:#fffaf0;stroke-width:3px}.heightLabel{font-size:11px;font-weight:900;fill:#9b5d20;paint-order:stroke;stroke:#fffaf0;stroke-width:3px}.shadow{filter:drop-shadow(0 15px 15px rgba(42,32,22,.24))}.outline{fill:none;stroke:#7b6b59;stroke-width:2;stroke-dasharray:6 5;opacity:.55}.mark{fill:#5c5148;font-size:10px;font-weight:700}.mini{fill:#796d60;font-size:10px}.warn{color:#9a5b14;font-weight:800}@media(max-width:1120px){.grid{grid-template-columns:1fr}.stage{height:660px}.head{flex-direction:column}.badges{justify-content:flex-start}}
-</style>
-</head>
-<body><div id="app" class="app clean">
-<div class="head"><div><h1>天一府 F户型｜可拖拽旋转 V8</h1><p>本轮加入鼠标/触摸拖拽旋转：左右拖动旋转户型方向，上下拖动调整俯仰角；保留 V7 的外轮廓修正。</p></div><div class="badges"><span class="badge">上北下南</span><span class="badge">墙体白模</span><span class="badge">门洞开口</span><span class="badge">V8</span><span class="badge">鼠标拖拽旋转</span></div></div>
-<div class="toolbar"><button onclick="app.classList.toggle('clean')">文字标注 开/关</button><button onclick="app.classList.toggle('hideRef')">底稿 开/关</button><button onclick="app.classList.toggle('strongRef')">底稿增强</button><button onclick="resetView()">重置视角</button></div>
-<div class="grid"><main class="stage"><div class="status">当前：<b>V8 可拖拽旋转</b>；按住模型上下左右拖动</div><div class="compass"><div>北 N</div><div class="ew"><span>西</span><span>东</span></div><div>南 S</div></div><svg id="svg" viewBox="0 0 1160 780"></svg></main>
-<aside class="panel"><h2>这轮修正</h2><ul><li><b>左侧：</b>入户/电梯厅改成外凸阶梯，不再是一条直边。</li><li><b>北侧：</b>设备平台改成厨房/餐厅上方窄长外挑矮墙。</li><li><b>右侧：</b>主卧套房改成东南大外凸，主卫/衣帽间嵌入北侧。</li><li><b>外轮廓：</b>新增虚线轮廓辅助层，可看出凹凸边界。</li><li><b>交互：</b>按住模型拖动，左右旋转、上下调俯仰；触摸屏也可拖。</li></ul><div class="note"><span class="warn">操作：</span>在模型区域按住鼠标左键拖动；左右改变朝向，上下改变俯仰。点击“重置视角”回到默认角度。</div><h3>参考图</h3><div class="refs"><img src="reference-floorplan.jpeg"><img src="feedback-reference-1.png"><img src="feedback-reference-2.png"></div></aside></div></div>
-<script>
-const svg=document.getElementById('svg'),NS='http://www.w3.org/2000/svg';
-const S=8.7, ox=575, oy=210, H=78;
-let yaw=-45*Math.PI/180, pitch=.50, dragging=false, startX=0, startY=0, startYaw=yaw, startPitch=pitch;
-function iso(x,y,z=0){
-  const cx=x-52, cy=y-36;
-  const rx=cx*Math.cos(yaw)-cy*Math.sin(yaw);
-  const ry=cx*Math.sin(yaw)+cy*Math.cos(yaw);
-  return [ox+rx*S, oy+ry*S*pitch-z*H];
-}
-function resetView(){yaw=-45*Math.PI/180; pitch=.50; draw();}
-function bindDrag(){
-  svg.style.cursor='grab';
-  const down=e=>{dragging=true; svg.style.cursor='grabbing'; const p=e.touches?e.touches[0]:e; startX=p.clientX; startY=p.clientY; startYaw=yaw; startPitch=pitch; e.preventDefault();};
-  const move=e=>{if(!dragging)return; const p=e.touches?e.touches[0]:e; yaw=startYaw+(p.clientX-startX)*0.012; pitch=Math.max(.25,Math.min(.82,startPitch+(p.clientY-startY)*0.004)); draw(); e.preventDefault();};
-  const up=()=>{dragging=false; svg.style.cursor='grab';};
-  svg.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
-  svg.addEventListener('touchstart',down,{passive:false}); window.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
-}
-function el(n,a={},p=svg){const e=document.createElementNS(NS,n);for(const[k,v]of Object.entries(a))e.setAttribute(k,v);p.appendChild(e);return e}
-function poly(pts,cls,p=svg){return el('polygon',{points:pts.map(p=>p.join(',')).join(' '),class:cls},p)}
-function path(d,cls,p=svg){return el('path',{d, class:cls, fill:'none'},p)}
-function text(t,x,y,cls='roomLabel',z=0){const [px,py]=iso(x,y,z);const e=el('text',{x:px,y:py,class:cls,'text-anchor':'middle'});e.textContent=t;return e}
-function rect(x,y,w,d,cls='floor'){poly([iso(x,y),iso(x+w,y),iso(x+w,y+d),iso(x,y+d)],cls)}
-function prism(x,y,w,d,h,cls='wallTop'){const p0=iso(x,y),p1=iso(x+w,y),p2=iso(x+w,y+d),p3=iso(x,y+d),q0=iso(x,y,h),q1=iso(x+w,y,h),q2=iso(x+w,y+d,h),q3=iso(x,y+d,h);poly([p1,p2,q2,q1],'wallSide');poly([p2,p3,q3,q2],'wallDark');poly([p0,p1,q1,q0],'wallSide');poly([p3,p0,q0,q3],'wallDark');poly([q0,q1,q2,q3],cls)}
-function segs(a,b,gaps,fn){let c=a;gaps.sort((u,v)=>u[0]-v[0]).forEach(g=>{if(g[0]>c)fn(c,g[0]);c=Math.max(c,g[1])});if(c<b)fn(c,b)}
-function wall(x1,y1,x2,y2,t=.52,h=1,gaps=[]){if(Math.abs(y1-y2)<.01){let y=y1-t/2,xa=Math.min(x1,x2),xb=Math.max(x1,x2);segs(xa,xb,gaps,(a,b)=>prism(a,y,b-a,t,h))}else{let x=x1-t/2,ya=Math.min(y1,y2),yb=Math.max(y1,y2);segs(ya,yb,gaps,(a,b)=>prism(x,a,t,b-a,h))}}
-function room(x,y,w,d,name,cls='floor'){rect(x,y,w,d,cls);text(name,x+w/2,y+d/2,'roomLabel',.03)}
-function line3(x1,y1,x2,y2,cls='glass',z=.05){const a=iso(x1,y1,z),b=iso(x2,y2,z);el('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],class:cls})}
-function outline(points,cls='outline'){const d=points.map((p,i)=>(i?'L':'M')+iso(p[0],p[1],1.08).join(',')).join(' ')+' Z';path(d,cls)}
-function draw(){svg.innerHTML='';el('image',{href:'reference-floorplan.jpeg',x:30,y:75,width:360,height:570,class:'refUnder'});const g=el('g',{class:'shadow'});
-// V7: rebuild the three weak outline areas: west entry/elevator, north equipment platform, east master suite
-room(4,9,11,8,'客梯');room(4,19,15,12,'电梯厅');room(19,24,11,8,'玄关');
-room(25,8,15,12,'厨房','wood');room(40,8,15,12,'餐厅','wood');room(55,5,18,16,'东北卧');room(39,20,27,12,'过道');
-room(66,20,10,10,'公卫','wet');room(76,24,9,9,'主卫','wet');room(76,33,10,10,'衣帽');
-room(8,50,22,19,'西南次卧');room(30,35,34,27,'客厅');room(64,49,12,13,'多功能');room(31,62,29,7,'阳台','bal');
-room(76,43,23,26,'主卧');room(37,1,23,5,'设备平台','bal');
-const wh=1.05, low=.42;
-// visible outline guide: stepped west side, long narrow north platform, larger southeast master block
-outline([[4,9],[15,9],[15,18],[19,18],[19,24],[30,24],[30,20],[37,20],[37,1],[60,1],[60,6],[73,6],[73,20],[85,20],[85,43],[99,43],[99,69],[8,69],[8,50],[4,50]]);
-// exterior walls: left entry/elevator as stepped protrusion, not a straight rectangle
-wall(4,9,15,9,.74,wh,[]); wall(15,9,15,18,.74,wh,[]); wall(15,18,19,18,.74,wh,[]); wall(19,18,19,24,.74,wh,[[20,23]]); wall(19,24,30,24,.74,wh,[[23,27]]); wall(30,20,37,20,.74,wh,[]);
-// north equipment platform: narrow long balcony above kitchen/dining
-wall(37,1,60,1,.42,low,[]); wall(37,6,60,6,.42,low,[[44,52]]); wall(37,1,37,6,.42,low,[]); wall(60,1,60,6,.42,low,[]);
-wall(25,8,37,8,.74,wh,[]); wall(60,6,73,6,.74,wh,[]); wall(73,6,73,20,.74,wh,[]);
-// right / southeast: master suite projects farther east and south
-wall(73,20,85,20,.74,wh,[[78,82]]); wall(85,20,85,43,.74,wh,[[29,33]]); wall(85,43,99,43,.74,wh,[]); wall(99,43,99,69,.74,wh,[]); wall(8,69,99,69,.74,wh,[[31,60]]);
-wall(8,50,8,69,.74,wh,[]); wall(4,19,4,50,.74,wh,[[31,35]]); wall(4,9,4,19,.74,wh,[]);
-// internal partitions updated around master suite
-wall(30,35,30,62,.52,wh,[[48,53]]); wall(64,20,64,62,.52,wh,[[27,31],[37,41],[49,54]]); wall(76,20,76,69,.52,wh,[[29,34],[41,45],[49,54]]);
-wall(85,24,85,43,.52,wh,[[32,36]]); wall(76,33,99,33,.52,wh,[[83,88]]); wall(76,43,99,43,.52,wh,[[86,91]]);
-wall(25,20,55,20,.52,wh,[[39,44]]); wall(40,8,40,20,.52,wh,[[12,15]]); wall(55,6,55,20,.52,wh,[[12,15]]); wall(30,35,64,35,.52,wh,[[42,53]]);
-wall(66,30,76,30,.52,wh,[[71,75]]); wall(66,40,76,40,.52,wh,[[71,75]]); wall(66,50,76,50,.52,wh,[[70,74]]);
-// balcony low wall
-wall(31,62,60,62,.42,low,[[39,51]]); wall(31,69,60,69,.42,low,[]); wall(31,62,31,69,.42,low,[]); wall(60,62,60,69,.42,low,[]);
-// glass/window/door visual lines
-line3(34,62,57,62,'glass'); line3(44,6,52,6,'glass'); line3(82,69,96,69,'glass'); line3(58,6,70,6,'glass'); line3(99,50,99,64,'glass');
-// low furniture masses, muted
-prism(28,10,5,5,.28,'wallTop'); prism(43,11,7,4,.23,'wallTop'); prism(39,49,13,5,.28,'wallTop'); prism(56,38,3,12,.38,'wallTop'); prism(84,55,9,8,.28,'wallTop'); prism(14,56,8,7,.28,'wallTop');
-text('左侧阶梯入户/电梯厅',13,20,'heightLabel',1.05); text('北侧窄长设备平台',49,3,'heightLabel',.55); text('东南主卧外凸套房',89,46,'heightLabel',1.05);
-text('3000',19,72,'dim'); text('5050',45,72,'dim'); text('3600',88,72,'dim');
-}
-draw();bindDrag();
-</script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>天一府 F户型｜React Three Fiber 白模 V9</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
