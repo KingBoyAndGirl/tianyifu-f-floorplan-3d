@@ -11,7 +11,7 @@ import { roomArea, roomPoints, selectionKey, wallLength } from './geometry'
 const roomTypes: RoomType[] = ['living', 'wet', 'balcony', 'wood', 'public']
 const openingTypes: OpeningType[] = ['door', 'window', 'opening', 'sliding']
 const openingSwings: OpeningSwing[] = ['left', 'right']
-const STORAGE_KEY = 'tianyifu-floorplan-editor-v29'
+const STORAGE_KEY = 'tianyifu-floorplan-editor-v30'
 const PREFS_KEY = 'tianyifu-floorplan-editor-prefs-v27'
 
 interface PersistedFloorplan {
@@ -275,6 +275,7 @@ function repairWallOpenings(wall: Wall): Wall {
 const dxfLayers = [
   { name: 'ROOMS', color: 3 },
   { name: 'WALLS', color: 7 },
+  { name: 'WALL_SOLIDS', color: 8 },
   { name: 'OPENINGS', color: 5 },
   { name: 'OPENINGS_TEXT', color: 5 },
   { name: 'LABELS', color: 2 },
@@ -342,6 +343,22 @@ ${point[0]}
 20
 ${-point[1]}
 `).join('')}`
+}
+
+
+function wallOutlinePoints(wall: Wall): Point[] {
+  const dx = wall.to[0] - wall.from[0]
+  const dy = wall.to[1] - wall.from[1]
+  const len = Math.hypot(dx, dy) || 1
+  const half = (wall.thickness ?? WALL_THICKNESS) / 2
+  const nx = -dy / len * half
+  const ny = dx / len * half
+  return [
+    [Number((wall.from[0] + nx).toFixed(3)), Number((wall.from[1] + ny).toFixed(3))],
+    [Number((wall.to[0] + nx).toFixed(3)), Number((wall.to[1] + ny).toFixed(3))],
+    [Number((wall.to[0] - nx).toFixed(3)), Number((wall.to[1] - ny).toFixed(3))],
+    [Number((wall.from[0] - nx).toFixed(3)), Number((wall.from[1] - ny).toFixed(3))],
+  ]
 }
 
 function svgOpeningSymbol(wall: Wall, opening: NonNullable<Wall['openings']>[number], len: number) {
@@ -571,6 +588,7 @@ export default function App() {
     })
     if (layers.walls) walls.forEach((wall, index) => {
       entities.push(dxfLine('WALLS', wall.from, wall.to))
+      entities.push(dxfPolyline('WALL_SOLIDS', wallOutlinePoints(wall), true))
       const len = wallLength(wall) || 1
       const mid: Point = [(wall.from[0] + wall.to[0]) / 2, (wall.from[1] + wall.to[1]) / 2]
       if (layers.labels) entities.push(dxfText('LABELS', mid, `W${index + 1}`, 1.1))
@@ -636,10 +654,10 @@ export default function App() {
     <main className="app editorApp">
       <header className="header">
         <div>
-          <h1>天一府 F户型｜户型编辑器 V29</h1>
-          <p>路线 B 第二十版：DXF 导出增强 HEADER、单位设置和 LAYER 图层表，导入 CAD 时图层更规范。</p>
+          <h1>天一府 F户型｜户型编辑器 V30</h1>
+          <p>路线 B 第二十一版：DXF 导出新增 WALL_SOLIDS 墙厚轮廓图层，墙体不再只有中心线。</p>
         </div>
-        <div className="badges"><span className="badge">Editor</span><span className="badge">Room/Wall Select</span><span className="badge">JSON Export</span><span className="badge">2D/3D</span><span className="badge">Draw Wall</span><span className="badge">Snap</span><span className="badge">Door/Window</span><span className="badge">Polygon Room</span><span className="badge">Vertex Drag</span><span className="badge">Insert Vertex</span><span className="badge">Intersections</span><span className="badge">Auto Split</span><span className="badge">Opening Migration</span><span className="badge">Wall Merge</span><span className="badge">Opening Validate</span><span className="badge">Layers</span><span className="badge">Search</span><span className="badge">SVG Layers</span><span className="badge">Prefs</span><span className="badge">DXF</span><span className="badge">DXF Layers</span><span className="badge">V29</span></div>
+        <div className="badges"><span className="badge">Editor</span><span className="badge">Room/Wall Select</span><span className="badge">JSON Export</span><span className="badge">2D/3D</span><span className="badge">Draw Wall</span><span className="badge">Snap</span><span className="badge">Door/Window</span><span className="badge">Polygon Room</span><span className="badge">Vertex Drag</span><span className="badge">Insert Vertex</span><span className="badge">Intersections</span><span className="badge">Auto Split</span><span className="badge">Opening Migration</span><span className="badge">Wall Merge</span><span className="badge">Opening Validate</span><span className="badge">Layers</span><span className="badge">Search</span><span className="badge">SVG Layers</span><span className="badge">Prefs</span><span className="badge">DXF</span><span className="badge">DXF Layers</span><span className="badge">Wall Solids</span><span className="badge">V30</span></div>
       </header>
       <section className="layout editorLayout">
         <div className="canvasWrap">
@@ -668,7 +686,7 @@ export default function App() {
           </section>
           <section className="card objectList"><h2>对象列表</h2><input className="objectSearch" placeholder="搜索房间/墙体..." value={objectFilter} onChange={(event) => setObjectFilter(event.target.value)} /><h3>房间</h3>{filteredRooms.map((room) => { const index = rooms.findIndex((item) => item.id === room.id); return <button key={room.id} className={selection?.type !== 'wall' && selection?.id === room.id ? 'active' : ''} onClick={() => setSelection({ type: 'room', id: room.id })}>R{index + 1} · {room.name}</button> })}<h3>墙体</h3>{filteredWalls.map((wall) => { const index = walls.findIndex((item) => item.id === wall.id); return <button key={wall.id} className={selection?.type === 'wall' && selection.id === wall.id ? 'active' : ''} onClick={() => setSelection({ type: 'wall', id: wall.id })}>W{index + 1} · {wall.id}</button> })}</section>
           <Inspector rooms={rooms} walls={walls} selection={selection} onUpdateRoom={updateRoom} onUpdateWall={updateWall} onDeleteSelection={deleteSelection} onDuplicateRoom={duplicateRoom} onRepairWall={repairWall} />
-          <section className="note"><span className="warn">路线 B 进度：</span>当前 DXF 包含 HEADER、米制单位和 LAYER 图层表。下一阶段建议做门窗 Block、墙厚实体和 HATCH 填充。</section>
+          <section className="note"><span className="warn">路线 B 进度：</span>当前 DXF 同时导出墙体中心线与 WALL_SOLIDS 墙厚轮廓。下一阶段建议做房间 HATCH 填充和门窗 Block。</section>
         </aside>
       </section>
     </main>
