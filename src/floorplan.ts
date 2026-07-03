@@ -10,6 +10,17 @@ export interface Room {
   y: number
   w: number
   d: number
+  points?: Point[]
+}
+
+export type OpeningType = 'door' | 'window' | 'opening' | 'sliding'
+export type OpeningSwing = 'left' | 'right'
+
+export interface WallOpening {
+  start: number
+  end: number
+  type?: OpeningType
+  swing?: OpeningSwing
 }
 
 export interface Wall {
@@ -19,7 +30,7 @@ export interface Wall {
   thickness?: number
   height?: number
   kind?: 'full' | 'low'
-  openings?: Array<{ start: number; end: number }>
+  openings?: WallOpening[]
 }
 
 export const SCALE = 0.12
