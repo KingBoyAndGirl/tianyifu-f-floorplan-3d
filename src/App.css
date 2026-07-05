@@ -59,6 +59,7 @@ button.wide { width: 100%; }
 .roomText { font-size: 2px; fill: #4d4035; text-anchor: middle; dominant-baseline: middle; pointer-events: none; user-select: none; font-weight: 700; }
 .wallLine { stroke: #fffaf0; stroke-width: 1.6; stroke-linecap: square; vector-effect: non-scaling-stroke; cursor: pointer; filter: drop-shadow(0 .4px .35px rgba(60,45,30,.3)); }
 .wallLine.low { stroke: #e7dccb; stroke-dasharray: 1.2 1; }
+.wallLine.loadBearing { stroke: #8b5e34; stroke-width: 2.4; }
 .wallLine.selected { stroke: #ffb000; stroke-width: 2.35; }
 .openingLine { stroke: #43a1d5; stroke-width: 2.8; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 .handle { fill: #ffcf42; stroke: #5d3b00; stroke-width: .22; vector-effect: non-scaling-stroke; cursor: grab; }
