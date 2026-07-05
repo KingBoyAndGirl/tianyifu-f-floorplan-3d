@@ -427,7 +427,7 @@ function Inspector({ rooms, walls, selection, onUpdateRoom, onUpdateWall, onDele
         <div className="muted">ID：{selectedWall.id}</div>
         <div className="grid2"><NumberInput label="起点 X" value={selectedWall.from[0]} onChange={(x) => onUpdateWall(selectedWall.id, { from: [x, selectedWall.from[1]] })} /><NumberInput label="起点 Y" value={selectedWall.from[1]} onChange={(y) => onUpdateWall(selectedWall.id, { from: [selectedWall.from[0], y] })} /></div>
         <div className="grid2"><NumberInput label="终点 X" value={selectedWall.to[0]} onChange={(x) => onUpdateWall(selectedWall.id, { to: [x, selectedWall.to[1]] })} /><NumberInput label="终点 Y" value={selectedWall.to[1]} onChange={(y) => onUpdateWall(selectedWall.id, { to: [selectedWall.to[0], y] })} /></div>
-        <div className="grid2"><NumberInput label="厚度" value={selectedWall.thickness ?? WALL_THICKNESS} step={0.01} onChange={(thickness) => onUpdateWall(selectedWall.id, { thickness })} /><NumberInput label="高度" value={selectedWall.height ?? (selectedWall.kind === 'low' ? 1.1 : WALL_HEIGHT)} step={0.1} onChange={(height) => onUpdateWall(selectedWall.id, { height })} /></div>
+        <div className="grid2"><NumberInput label="厚度" value={selectedWall.thickness ?? WALL_THICKNESS} step={0.01} onChange={(thickness) => onUpdateWall(selectedWall.id, { thickness })} /><NumberInput label="高度" value={selectedWall.height ?? (selectedWall.kind === 'low' ? 1.1 : WALL_HEIGHT)} step={0.1} onChange={(height) => onUpdateWall(selectedWall.id, { height })} /></div><label className="field"><span>承重墙</span><input type="checkbox" checked={selectedWall.loadBearing ?? false} onChange={(event) => onUpdateWall(selectedWall.id, { loadBearing: event.target.checked })} /></label>
         <label className="field"><span>墙体类型</span><select value={selectedWall.kind ?? 'full'} onChange={(event) => onUpdateWall(selectedWall.id, { kind: event.target.value as Wall['kind'] })}><option value="full">full</option><option value="low">low</option></select></label>
         <div className="metric"><span>长度</span><b>{wallLength(selectedWall).toFixed(1)}</b><small>模型单位</small></div>
         <div className="openingsEditor">
@@ -529,7 +529,7 @@ export default function App() {
   }
   const addWall = () => {
     const id = `wall-${Date.now().toString(36)}`
-    setWalls((items) => [...items, { id, from: [20, 20], to: [34, 20], kind: 'full' }])
+    setWalls((items) => [...items, { id, from: [20, 20], to: [34, 20], kind: 'full', loadBearing: false }])
     setSelection({ type: 'wall', id })
   }
   const cleanupWalls = () => {

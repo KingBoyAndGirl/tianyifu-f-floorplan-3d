@@ -284,7 +284,7 @@ export function TopDownEditor({ rooms, walls, selection, tool, showDimensions, l
             const mid = wallMid(wall)
             return (
               <g key={wall.id}>
-                <line x1={wall.from[0]} y1={wall.from[1]} x2={wall.to[0]} y2={wall.to[1]} className={selected ? 'wallLine selected' : wall.kind === 'low' ? 'wallLine low' : 'wallLine'} onPointerDown={(event) => { if (tool !== 'select') return; event.stopPropagation(); onSelect({ type: 'wall', id: wall.id }) }} />
+                <line x1={wall.from[0]} y1={wall.from[1]} x2={wall.to[0]} y2={wall.to[1]} strokeWidth={selected ? 2.5 : wall.loadBearing ? 2.0 : 1.0} stroke={selected ? '#ffb000' : wall.loadBearing ? '#2f251d' : '#8a7e6d'} className={selected ? 'wallLine selected' : wall.kind === 'low' ? 'wallLine low' : 'wallLine'} onPointerDown={(event) => { if (tool !== 'select') return; event.stopPropagation(); onSelect({ type: 'wall', id: wall.id }) }} />
                 {layers.openings && (wall.openings ?? []).map((opening, index) => {
                   const len = lineLength(wall.from, wall.to) || 1
                   const a = opening.start / len
