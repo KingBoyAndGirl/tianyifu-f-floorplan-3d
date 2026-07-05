@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
+import { isLoadBearingByDefault } from './floorplan'
 import type { Room, Wall } from './floorplan'
 import { roomArea, roomCenter, roomPoints } from './geometry'
 import type { Selection } from './geometry'
@@ -9,7 +10,7 @@ const GRID = 1
 const SNAP_DISTANCE = 2
 const LINE_SNAP_DISTANCE = 1.25
 
-export type EditorTool = 'select' | 'drawWall'
+export type EditorTool = 'select' | 'drawWall' | 'holeWall'
 export interface EditorLayers { grid: boolean; rooms: boolean; walls: boolean; openings: boolean; labels: boolean }
 
 type DragState =
@@ -116,7 +117,7 @@ function lineLength(from: [number, number], to: [number, number]) {
   return Math.hypot(to[0] - from[0], to[1] - from[1])
 }
 
-export function TopDownEditor({ rooms, walls, selection, tool, showDimensions, layers, onSelect, onUpdateRoom, onUpdateWall, onAddWall }: { rooms: Room[]; walls: Wall[]; selection: Selection; tool: EditorTool; showDimensions: boolean; layers: EditorLayers; onSelect: (selection: Selection) => void; onUpdateRoom: (id: string, patch: Partial<Room>) => void; onUpdateWall: (id: string, patch: Partial<Wall>) => void; onAddWall: (wall: Wall) => void }) {
+export function TopDownEditor({ rooms, walls, selection, tool, showDimensions, layers, onSelect, onUpdateRoom, onUpdateWall, onAddWall, onAddWallHole }: { rooms: Room[]; walls: Wall[]; selection: Selection; tool: EditorTool; showDimensions: boolean; layers: EditorLayers; onSelect: (selection: Selection) => void; onUpdateRoom: (id: string, patch: Partial<Room>) => void; onUpdateWall: (id: string, patch: Partial<Wall>) => void; onAddWall: (wall: Wall) => void; onAddWallHole?: (wallId: string, pos: number) => void }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [drag, setDrag] = useState<DragState>(null)
   const [draw, setDraw] = useState<DrawState>(null)
@@ -194,6 +195,24 @@ export function TopDownEditor({ rooms, walls, selection, tool, showDimensions, l
       onSelect(null)
       return
     }
+    if (tool === 'holeWall' && onAddWallHole) {
+      const nearest = nearestWallProjection(point, walls)
+      if (!nearest) return
+      let bestWall: Wall | undefined
+      let bestDist = Infinity
+      for (const wall of walls) {
+        const pj = projectPointToSegment(point, wall.from, wall.to)
+        const dist = lineLength(point, pj)
+        if (dist <= LINE_SNAP_DISTANCE && dist < bestDist) { bestWall = wall; bestDist = dist }
+      }
+      if (bestWall) {
+        const len = lineLength(bestWall.from, bestWall.to)
+        const pj = projectPointToSegment(point, bestWall.from, bestWall.to)
+        const pos = lineLength(bestWall.from, pj)
+        if (pos > 1 && pos < len - 1) onAddWallHole(bestWall.id, pos)
+      }
+      return
+    }
     onSelect(null)
   }
 
@@ -242,7 +261,7 @@ export function TopDownEditor({ rooms, walls, selection, tool, showDimensions, l
     <div className="topDownWrap">
       <svg
         ref={svgRef}
-        className={tool === 'drawWall' ? 'topDownSvg drawMode' : 'topDownSvg'}
+        className={tool === 'drawWall' ? 'topDownSvg drawMode' : tool === 'holeWall' ? 'topDownSvg holeMode' : 'topDownSvg'}
         viewBox={`${TOP_DOWN_VIEWBOX.minX} ${TOP_DOWN_VIEWBOX.minY} ${TOP_DOWN_VIEWBOX.width} ${TOP_DOWN_VIEWBOX.height}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -284,7 +303,7 @@ export function TopDownEditor({ rooms, walls, selection, tool, showDimensions, l
             const mid = wallMid(wall)
             return (
               <g key={wall.id}>
-                <line x1={wall.from[0]} y1={wall.from[1]} x2={wall.to[0]} y2={wall.to[1]} className={selected ? 'wallLine selected' : wall.kind === 'low' ? 'wallLine low' : 'wallLine'} onPointerDown={(event) => { if (tool !== 'select') return; event.stopPropagation(); onSelect({ type: 'wall', id: wall.id }) }} />
+                <line x1={wall.from[0]} y1={wall.from[1]} x2={wall.to[0]} y2={wall.to[1]} className={selected ? 'wallLine selected' : wall.kind === 'low' ? 'wallLine low' : (wall.loadBearing ?? isLoadBearingByDefault(wall.id)) ? 'wallLine loadBearing' : 'wallLine'} onPointerDown={(event) => { if (tool !== 'select') return; event.stopPropagation(); onSelect({ type: 'wall', id: wall.id }) }} />
                 {layers.openings && (wall.openings ?? []).map((opening, index) => {
                   const len = lineLength(wall.from, wall.to) || 1
                   const a = opening.start / len
@@ -334,7 +353,7 @@ export function TopDownEditor({ rooms, walls, selection, tool, showDimensions, l
           </g>
         )}
       </svg>
-      <div className="topDownHelp"><b>2D 编辑：</b>{tool === 'drawWall' ? '拖动绘制新墙；靠近墙端点自动吸附；交点会高亮提示。' : '拖房间/顶点；点边中 + 插入顶点；顶点可吸附墙端点和墙线。'}</div>
+      <div className="topDownHelp"><b>2D 编辑：</b>{tool === 'drawWall' ? '拖动绘制新墙；靠近墙端点自动吸附；交点会高亮提示。' : tool === 'holeWall' ? '点击墙体添加墙洞（opening 类型）；洞宽2单位。' : '拖房间/顶点；点边中 + 插入顶点；顶点可吸附墙端点和墙线。'}</div>
     </div>
   )
 }

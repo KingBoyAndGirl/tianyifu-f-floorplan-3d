@@ -2,10 +2,12 @@ import { Suspense, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Html, Line, OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
-import { LOW_WALL_HEIGHT, SCALE, WALL_HEIGHT, WALL_THICKNESS, outline } from './floorplan'
+import { LOW_WALL_HEIGHT, SCALE, WALL_HEIGHT, WALL_THICKNESS, isLoadBearingByDefault, outline } from './floorplan'
 import type { Room, Wall } from './floorplan'
 import { interp, roomCenter, roomPoints, toWorld } from './geometry'
 import type { Selection } from './geometry'
+import { createBrickTexture, brickRepeat } from './BrickTexture'
+import { DoorModel } from './DoorModel'
 
 function roomColor(type: Room['type'], selected: boolean) {
   if (selected) return '#ffd36a'
@@ -56,7 +58,20 @@ function RoomFloor({ room, selected, showLabels, onSelect }: { room: Room; selec
   )
 }
 
-function WallSegment({ from, to, height, thickness, color, selected, onSelect }: { from: [number, number]; to: [number, number]; height: number; thickness: number; color: string; selected: boolean; onSelect: () => void }) {
+// 缓存砖块纹理，避免重复创建
+const textureCache = new Map<string, THREE.CanvasTexture>()
+
+function getBrickTexture(scheme: 'load-bearing' | 'non-load-bearing' | 'low-wall'): THREE.CanvasTexture {
+  if (!textureCache.has(scheme)) {
+    textureCache.set(scheme, createBrickTexture(scheme))
+  }
+  return textureCache.get(scheme)!
+}
+
+function WallSegment({ from, to, height, thickness, selected, loadBearing, low, onSelect }: {
+  from: [number, number]; to: [number, number]; height: number; thickness: number;
+  selected: boolean; loadBearing: boolean; low: boolean; onSelect: () => void
+}) {
   const dx = to[0] - from[0]
   const dy = to[1] - from[1]
   const len = Math.hypot(dx, dy)
@@ -64,6 +79,16 @@ function WallSegment({ from, to, height, thickness, color, selected, onSelect }:
   const mid: [number, number] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]
   const [x, , z] = toWorld(mid[0], mid[1])
   const angle = Math.atan2(dy, dx)
+
+  // 选择砖块纹理方案
+  const scheme: 'load-bearing' | 'non-load-bearing' | 'low-wall' = low ? 'low-wall' : loadBearing ? 'load-bearing' : 'non-load-bearing'
+  const texture = useMemo(() => getBrickTexture(scheme), [scheme])
+
+  // 根据墙长计算纹理 repeat
+  const textureRepeatX = useMemo(() => brickRepeat(len * SCALE), [len])
+  // 砖块 repeat Y = 墙高 / 砖高（0.12m/块）
+  const textureRepeatY = height / 0.12
+
   return (
     <mesh
       position={[x, height / 2, z]}
@@ -76,14 +101,46 @@ function WallSegment({ from, to, height, thickness, color, selected, onSelect }:
       }}
     >
       <boxGeometry args={[len * SCALE, height, selected ? thickness * 1.45 : thickness]} />
-      <meshStandardMaterial color={selected ? '#ffb000' : color} roughness={0.64} emissive={selected ? '#553600' : '#000000'} emissiveIntensity={selected ? 0.1 : 0} />
+      <meshStandardMaterial
+        map={texture}
+        map-repeat={[textureRepeatX, textureRepeatY]}
+        map-wrapS={THREE.RepeatWrapping}
+        map-wrapT={THREE.RepeatWrapping}
+        roughness={0.7}
+        roughnessMap={texture}
+        roughnessMap-repeat={[textureRepeatX, textureRepeatY]}
+        roughnessMap-wrapS={THREE.RepeatWrapping}
+        roughnessMap-wrapT={THREE.RepeatWrapping}
+        color={selected ? '#ffb000' : '#ffffff'}
+        emissive={selected ? '#553600' : '#000000'}
+        emissiveIntensity={selected ? 0.1 : 0}
+      />
+    </mesh>
+  )
+}
+
+// 3D 墙洞可视化 — 在 opening 类型开口处渲染深色边框
+function HoleFrame({ from, to, height }: { from: [number, number]; to: [number, number]; height: number }) {
+  const dx = to[0] - from[0]
+  const dy = to[1] - from[1]
+  const len = Math.hypot(dx, dy)
+  const mid: [number, number] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]
+  const [x, , z] = toWorld(mid[0], mid[1])
+  const angle = Math.atan2(dy, dx)
+  return (
+    <mesh position={[x, height / 2, z]} rotation={[0, -angle, 0]}>
+      <boxGeometry args={[len * SCALE, height * 0.85, 0.04]} />
+      <meshStandardMaterial color="#3a2f24" roughness={0.9} transparent opacity={0.55} />
     </mesh>
   )
 }
 
 function WallMesh({ walls, selectedId, onSelectWall }: { walls: Wall[]; selectedId?: string; onSelectWall: (id: string) => void }) {
   const segments = useMemo(() => {
-    const out: Array<{ id: string; wallId: string; from: [number, number]; to: [number, number]; height: number; thickness: number; low: boolean }> = []
+    const out: Array<{
+      id: string; wallId: string; from: [number, number]; to: [number, number];
+      height: number; thickness: number; low: boolean; loadBearing: boolean
+    }> = []
     for (const wall of walls) {
       const from = wall.from
       const to = wall.to
@@ -91,19 +148,129 @@ function WallMesh({ walls, selectedId, onSelectWall }: { walls: Wall[]; selected
       const low = wall.kind === 'low'
       const height = wall.height ?? (low ? LOW_WALL_HEIGHT : WALL_HEIGHT)
       const thickness = (wall.thickness ?? WALL_THICKNESS) * (low ? 0.82 : 1)
+      // 使用 wall.loadBearing 如果已设置，否则根据 ID 推断
+      const loadBearing = wall.loadBearing ?? isLoadBearingByDefault(wall.id)
       const openings = [...(wall.openings ?? [])].sort((a, b) => a.start - b.start)
       let cursor = 0
       openings.forEach((op, idx) => {
-        if (op.start > cursor) out.push({ id: `${wall.id}-${idx}a`, wallId: wall.id, from: interp(from, to, cursor / len), to: interp(from, to, op.start / len), height, thickness, low })
+        if (op.start > cursor) out.push({
+          id: `${wall.id}-${idx}a`, wallId: wall.id,
+          from: interp(from, to, cursor / len), to: interp(from, to, op.start / len),
+          height, thickness, low, loadBearing,
+        })
         cursor = Math.max(cursor, op.end)
       })
-      if (cursor < len) out.push({ id: `${wall.id}-tail`, wallId: wall.id, from: interp(from, to, cursor / len), to, height, thickness, low })
+      if (cursor < len) out.push({
+        id: `${wall.id}-tail`, wallId: wall.id,
+        from: interp(from, to, cursor / len), to,
+        height, thickness, low, loadBearing,
+      })
     }
     return out
   }, [walls])
+
+  // 收集所有 door opening 信息，用于放置 DoorModel
+  const doors = useMemo(() => {
+    const out: Array<{
+      wall: Wall; opening: NonNullable<Wall['openings']>[number];
+      worldPos: [number, number, number]; width: number
+    }> = []
+    for (const wall of walls) {
+      const len = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
+      if (len <= 0.001) continue
+      for (const opening of wall.openings ?? []) {
+        if (opening.type !== 'door') continue
+        const a = opening.start / len
+        const b = opening.end / len
+        const width = (opening.end - opening.start) * SCALE
+        // opening 中心点
+        const midT = (a + b) / 2
+        const mx = wall.from[0] + (wall.to[0] - wall.from[0]) * midT
+        const my = wall.from[1] + (wall.to[1] - wall.from[1]) * midT
+        const [wx, , wz] = toWorld(mx, my)
+        out.push({
+          wall,
+          opening,
+          worldPos: [wx, 0, wz],
+          width,
+        })
+      }
+    }
+    return out
+  }, [walls])
+
+  // 收集所有 opening 类型洞口，用于渲染 HoleFrame
+  const holes = useMemo(() => {
+    const out: Array<{
+      wall: Wall; opening: NonNullable<Wall['openings']>[number];
+      worldPos: [number, number, number]
+    }> = []
+    for (const wall of walls) {
+      const len = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
+      if (len <= 0.001) continue
+      for (const opening of wall.openings ?? []) {
+        if (opening.type !== 'opening') continue
+        const a = opening.start / len
+        const b = opening.end / len
+        const midT = (a + b) / 2
+        const mx = wall.from[0] + (wall.to[0] - wall.from[0]) * midT
+        const my = wall.from[1] + (wall.to[1] - wall.from[1]) * midT
+        out.push({ wall, opening, worldPos: [mx, my, 0] as [number, number, number] })
+      }
+    }
+    return out
+  }, [walls])
+
+
   return (
     <group>
-      {segments.map((s) => <WallSegment key={s.id} from={s.from} to={s.to} height={s.height} thickness={s.thickness} selected={selectedId === s.wallId} onSelect={() => onSelectWall(s.wallId)} color={s.low ? '#f4efe4' : '#fffaf0'} />)}
+      {segments.map((s) => (
+        <WallSegment
+          key={s.id}
+          from={s.from}
+          to={s.to}
+          height={s.height}
+          thickness={s.thickness}
+          selected={selectedId === s.wallId}
+          onSelect={() => onSelectWall(s.wallId)}
+          loadBearing={s.loadBearing}
+          low={s.low}
+        />
+      ))}
+      {doors.map((door, index) => {
+        const hingeSide = door.opening.swing === 'right' ? 'start' : 'end'
+        // 根据 swing 在 opening 起点或终点放置门扇
+        const hingeT = hingeSide === 'start'
+          ? door.opening.start / (Math.hypot(door.wall.to[0] - door.wall.from[0], door.wall.to[1] - door.wall.from[1]) || 1)
+          : door.opening.end / (Math.hypot(door.wall.to[0] - door.wall.from[0], door.wall.to[1] - door.wall.from[1]) || 1)
+        const hx = door.wall.from[0] + (door.wall.to[0] - door.wall.from[0]) * hingeT
+        const hy = door.wall.from[1] + (door.wall.to[1] - door.wall.from[1]) * hingeT
+        const [hwx, , hwz] = toWorld(hx, hy)
+        return (
+          <DoorModel
+            key={`door-${index}`}
+            position={[hwx, 0, hwz]}
+            width={door.width}
+            swing={door.opening.swing ?? 'left'}
+            hingeSide={hingeSide}
+            opened={false}
+          />
+        )
+      })}
+      {holes.map((hole, index) => {
+        const holeSegFrom = hole.wall.from
+        const holeSegTo = hole.wall.to
+        const height = hole.wall.height ?? (hole.wall.kind === 'low' ? LOW_WALL_HEIGHT : WALL_HEIGHT)
+        const a = hole.opening.start / Math.hypot(holeSegTo[0] - holeSegFrom[0], holeSegTo[1] - holeSegFrom[1])
+        const b = hole.opening.end / Math.hypot(holeSegTo[0] - holeSegFrom[0], holeSegTo[1] - holeSegFrom[1])
+        const hx = holeSegFrom[0] + (holeSegTo[0] - holeSegFrom[0]) * a
+        const hy = holeSegFrom[1] + (holeSegTo[1] - holeSegFrom[1]) * a
+        const hx2 = holeSegFrom[0] + (holeSegTo[0] - holeSegFrom[0]) * b
+        const hy2 = holeSegFrom[1] + (holeSegTo[1] - holeSegFrom[1]) * b
+        return (
+          <HoleFrame key={`hole-${index}`} from={[hx, hy] as [number, number]} to={[hx2, hy2] as [number, number]} height={height} />
+        )
+      })}
     </group>
   )
 }

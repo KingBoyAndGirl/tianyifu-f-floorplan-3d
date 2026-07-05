@@ -30,6 +30,7 @@ export interface Wall {
   thickness?: number
   height?: number
   kind?: 'full' | 'low'
+  loadBearing?: boolean
   openings?: WallOpening[]
 }
 
@@ -37,6 +38,13 @@ export const SCALE = 0.12
 export const WALL_HEIGHT = 2.8
 export const LOW_WALL_HEIGHT = 1.1
 export const WALL_THICKNESS = 0.22
+/** 根据墙体 ID 前缀判断是否为承重墙 */
+export function isLoadBearingByDefault(id: string): boolean {
+  if (id.startsWith('low-')) return false
+  if (id.startsWith('i-')) return false
+  return true
+}
+
 
 export const rooms: Room[] = [
   { id: 'guest-elevator', name: '客梯', type: 'public', x: 4, y: 9, w: 11, d: 8 },

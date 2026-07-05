@@ -59,6 +59,7 @@ button.wide { width: 100%; }
 .roomText { font-size: 2px; fill: #4d4035; text-anchor: middle; dominant-baseline: middle; pointer-events: none; user-select: none; font-weight: 700; }
 .wallLine { stroke: #fffaf0; stroke-width: 1.6; stroke-linecap: square; vector-effect: non-scaling-stroke; cursor: pointer; filter: drop-shadow(0 .4px .35px rgba(60,45,30,.3)); }
 .wallLine.low { stroke: #e7dccb; stroke-dasharray: 1.2 1; }
+.wallLine.loadBearing { stroke: #8b5e34; stroke-width: 2.4; }
 .wallLine.selected { stroke: #ffb000; stroke-width: 2.35; }
 .openingLine { stroke: #43a1d5; stroke-width: 2.8; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 .handle { fill: #ffcf42; stroke: #5d3b00; stroke-width: .22; vector-effect: non-scaling-stroke; cursor: grab; }
@@ -67,6 +68,7 @@ button.wide { width: 100%; }
 .toolSwitch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
 .toolSwitch button.active { background: #3d3025; color: #fff7ec; border-color: #3d3025; box-shadow: 0 6px 14px rgba(61,48,37,.18); }
 .topDownSvg.drawMode { cursor: crosshair; }
+.topDownSvg.holeMode { cursor: pointer; }
 .dimText, .wallDimText { font-size: 1.75px; fill: #8a5d12; text-anchor: middle; dominant-baseline: middle; pointer-events: none; user-select: none; font-weight: 800; paint-order: stroke; stroke: rgba(255,250,242,.9); stroke-width: .35; }
 .wallDimText { fill: #9a5b14; }
 .drawPreview line { stroke: #2d8fd5; stroke-width: 1.4; stroke-dasharray: 1.2 1; vector-effect: non-scaling-stroke; }

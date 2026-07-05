@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { rooms as initialRooms, walls as initialWalls, WALL_HEIGHT, WALL_THICKNESS } from './floorplan'
+import { isLoadBearingByDefault, rooms as initialRooms, walls as initialWalls, WALL_HEIGHT, WALL_THICKNESS } from './floorplan'
 import type { OpeningSwing, OpeningType, Point, Room, RoomType, Wall } from './floorplan'
 import { FloorplanCanvas } from './Scene'
 import { TOP_DOWN_VIEWBOX, TopDownEditor } from './TopDownEditor'
@@ -427,7 +427,8 @@ function Inspector({ rooms, walls, selection, onUpdateRoom, onUpdateWall, onDele
         <div className="muted">ID：{selectedWall.id}</div>
         <div className="grid2"><NumberInput label="起点 X" value={selectedWall.from[0]} onChange={(x) => onUpdateWall(selectedWall.id, { from: [x, selectedWall.from[1]] })} /><NumberInput label="起点 Y" value={selectedWall.from[1]} onChange={(y) => onUpdateWall(selectedWall.id, { from: [selectedWall.from[0], y] })} /></div>
         <div className="grid2"><NumberInput label="终点 X" value={selectedWall.to[0]} onChange={(x) => onUpdateWall(selectedWall.id, { to: [x, selectedWall.to[1]] })} /><NumberInput label="终点 Y" value={selectedWall.to[1]} onChange={(y) => onUpdateWall(selectedWall.id, { to: [selectedWall.to[0], y] })} /></div>
-        <div className="grid2"><NumberInput label="厚度" value={selectedWall.thickness ?? WALL_THICKNESS} step={0.01} onChange={(thickness) => onUpdateWall(selectedWall.id, { thickness })} /><NumberInput label="高度" value={selectedWall.height ?? (selectedWall.kind === 'low' ? 1.1 : WALL_HEIGHT)} step={0.1} onChange={(height) => onUpdateWall(selectedWall.id, { height })} /></div>
+                <div className="grid2"><NumberInput label="厚度" value={selectedWall.thickness ?? WALL_THICKNESS} step={0.01} onChange={(thickness) => onUpdateWall(selectedWall.id, { thickness })} /><NumberInput label="高度" value={selectedWall.height ?? (selectedWall.kind === 'low' ? 1.1 : WALL_HEIGHT)} step={0.1} onChange={(height) => onUpdateWall(selectedWall.id, { height })} /></div>
+        <label className="field"><span>承重墙</span><input type="checkbox" checked={selectedWall.loadBearing ?? isLoadBearingByDefault(selectedWall.id)} onChange={(event) => onUpdateWall(selectedWall.id, { loadBearing: event.target.checked })} /></label>
         <label className="field"><span>墙体类型</span><select value={selectedWall.kind ?? 'full'} onChange={(event) => onUpdateWall(selectedWall.id, { kind: event.target.value as Wall['kind'] })}><option value="full">full</option><option value="low">low</option></select></label>
         <div className="metric"><span>长度</span><b>{wallLength(selectedWall).toFixed(1)}</b><small>模型单位</small></div>
         <div className="openingsEditor">
@@ -551,6 +552,10 @@ export default function App() {
   const addDrawnWall = (wall: Wall) => {
     setWalls((items) => splitWallsByNewWall(items, wall))
   }
+  const addWallHole = (wallId: string, pos: number) => {
+    setWalls((items) => items.map((w) => w.id === wallId ? { ...w, openings: [...(w.openings ?? []), { start: Math.max(0, pos - 1), end: Math.min(wallLength(w), pos + 1), type: 'opening' as const }] } : w))
+    setSelection({ type: 'wall', id: wallId })
+  }
   const exportJson = () => {
     const payload = JSON.stringify({ rooms, walls }, null, 2)
     void navigator.clipboard?.writeText(payload)
@@ -664,7 +669,7 @@ export default function App() {
           {viewMode === '3d' ? (
             <FloorplanCanvas rooms={rooms} walls={walls} selection={selection} showLabels={showLabels} showOutline={showOutline} showFurniture={showFurniture} onSelect={setSelection} />
           ) : (
-            <TopDownEditor rooms={rooms} walls={walls} selection={selection} tool={editorTool} showDimensions={showDimensions} layers={layers} onSelect={setSelection} onUpdateRoom={updateRoom} onUpdateWall={updateWall} onAddWall={addDrawnWall} />
+            <TopDownEditor rooms={rooms} walls={walls} selection={selection} tool={editorTool} showDimensions={showDimensions} layers={layers} onSelect={setSelection} onUpdateRoom={updateRoom} onUpdateWall={updateWall} onAddWall={addDrawnWall} onAddWallHole={addWallHole} />
           )}
           <div className="overlay"><div className="pill"><b>{viewMode === '3d' ? '3D 预览' : '2D 编辑'}：</b>{viewMode === '3d' ? '点击房间/墙体选中，右侧改参数' : '拖房间或墙体端点，按 Delete 删除'}</div><div className="pill">{viewMode === '3d' ? '滚轮缩放 / 右键平移 / 左键旋转' : '1 单位网格吸附'}</div></div>
         </div>
@@ -677,6 +682,7 @@ export default function App() {
             <h2>工具</h2>
             <div className="viewSwitch"><button className={viewMode === '3d' ? 'active' : ''} onClick={() => setViewMode('3d')}>3D 预览</button><button className={viewMode === '2d' ? 'active' : ''} onClick={() => setViewMode('2d')}>2D 编辑</button></div>
             <div className="toolSwitch"><button className={editorTool === 'select' ? 'active' : ''} onClick={() => { setEditorTool('select'); setViewMode('2d') }}>选择/拖拽</button><button className={editorTool === 'drawWall' ? 'active' : ''} onClick={() => { setEditorTool('drawWall'); setViewMode('2d') }}>画墙</button><button className={showDimensions ? 'active' : ''} onClick={() => setShowDimensions((v) => !v)}>尺寸标注</button><button onClick={exportSvg}>导出 SVG</button><button onClick={exportDxf}>导出 DXF</button></div>
+            <button className={editorTool === 'holeWall' ? 'active' : ''} onClick={() => { setEditorTool('holeWall'); setViewMode('2d') }}>挖洞</button>
             <div className="layerSwitch"><button className={layers.grid ? 'active' : ''} onClick={() => toggleLayer('grid')}>网格</button><button className={layers.rooms ? 'active' : ''} onClick={() => toggleLayer('rooms')}>房间</button><button className={layers.walls ? 'active' : ''} onClick={() => toggleLayer('walls')}>墙体</button><button className={layers.openings ? 'active' : ''} onClick={() => toggleLayer('openings')}>门窗</button><button className={layers.labels ? 'active' : ''} onClick={() => toggleLayer('labels')}>编号</button></div>
             <div className="controls"><button onClick={() => setShowLabels((v) => !v)}>{showLabels ? '隐藏标注' : '显示标注'}</button><button onClick={() => setShowOutline((v) => !v)}>{showOutline ? '隐藏轮廓' : '显示轮廓'}</button><button onClick={() => setShowFurniture((v) => !v)}>{showFurniture ? '隐藏家具' : '显示家具'}</button><button onClick={addWall}>新增墙体</button><button onClick={cleanupWalls}>清理墙体</button><button onClick={repairAllOpenings}>修复洞口</button></div>
             <div className="controls"><button onClick={exportJson}>导出 JSON</button><button onClick={() => fileInputRef.current?.click()}>导入 JSON</button><button className="danger" onClick={reset}>重置数据</button><button className="danger" onClick={clearSavedDraft}>清除草稿</button><button onClick={resetPrefs}>重置偏好</button></div>
