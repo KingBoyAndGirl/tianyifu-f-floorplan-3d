@@ -119,6 +119,22 @@ function WallSegment({ from, to, height, thickness, selected, loadBearing, low, 
   )
 }
 
+// 3D 墙洞可视化 — 在 opening 类型开口处渲染深色边框
+function HoleFrame({ from, to, height }: { from: [number, number]; to: [number, number]; height: number }) {
+  const dx = to[0] - from[0]
+  const dy = to[1] - from[1]
+  const len = Math.hypot(dx, dy)
+  const mid: [number, number] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]
+  const [x, , z] = toWorld(mid[0], mid[1])
+  const angle = Math.atan2(dy, dx)
+  return (
+    <mesh position={[x, height / 2, z]} rotation={[0, -angle, 0]}>
+      <boxGeometry args={[len * SCALE, height * 0.85, 0.04]} />
+      <meshStandardMaterial color="#3a2f24" roughness={0.9} transparent opacity={0.55} />
+    </mesh>
+  )
+}
+
 function WallMesh({ walls, selectedId, onSelectWall }: { walls: Wall[]; selectedId?: string; onSelectWall: (id: string) => void }) {
   const segments = useMemo(() => {
     const out: Array<{
@@ -183,6 +199,29 @@ function WallMesh({ walls, selectedId, onSelectWall }: { walls: Wall[]; selected
     return out
   }, [walls])
 
+  // 收集所有 opening 类型洞口，用于渲染 HoleFrame
+  const holes = useMemo(() => {
+    const out: Array<{
+      wall: Wall; opening: NonNullable<Wall['openings']>[number];
+      worldPos: [number, number, number]
+    }> = []
+    for (const wall of walls) {
+      const len = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
+      if (len <= 0.001) continue
+      for (const opening of wall.openings ?? []) {
+        if (opening.type !== 'opening') continue
+        const a = opening.start / len
+        const b = opening.end / len
+        const midT = (a + b) / 2
+        const mx = wall.from[0] + (wall.to[0] - wall.from[0]) * midT
+        const my = wall.from[1] + (wall.to[1] - wall.from[1]) * midT
+        out.push({ wall, opening, worldPos: [mx, my, 0] as [number, number, number] })
+      }
+    }
+    return out
+  }, [walls])
+
+
   return (
     <group>
       {segments.map((s) => (
@@ -216,6 +255,20 @@ function WallMesh({ walls, selectedId, onSelectWall }: { walls: Wall[]; selected
             hingeSide={hingeSide}
             opened={false}
           />
+        )
+      })}
+      {holes.map((hole, index) => {
+        const holeSegFrom = hole.wall.from
+        const holeSegTo = hole.wall.to
+        const height = hole.wall.height ?? (hole.wall.kind === 'low' ? LOW_WALL_HEIGHT : WALL_HEIGHT)
+        const a = hole.opening.start / Math.hypot(holeSegTo[0] - holeSegFrom[0], holeSegTo[1] - holeSegFrom[1])
+        const b = hole.opening.end / Math.hypot(holeSegTo[0] - holeSegFrom[0], holeSegTo[1] - holeSegFrom[1])
+        const hx = holeSegFrom[0] + (holeSegTo[0] - holeSegFrom[0]) * a
+        const hy = holeSegFrom[1] + (holeSegTo[1] - holeSegFrom[1]) * a
+        const hx2 = holeSegFrom[0] + (holeSegTo[0] - holeSegFrom[0]) * b
+        const hy2 = holeSegFrom[1] + (holeSegTo[1] - holeSegFrom[1]) * b
+        return (
+          <HoleFrame key={`hole-${index}`} from={[hx, hy] as [number, number]} to={[hx2, hy2] as [number, number]} height={height} />
         )
       })}
     </group>
