@@ -6,6 +6,8 @@ import { LOW_WALL_HEIGHT, SCALE, WALL_HEIGHT, WALL_THICKNESS, outline } from './
 import type { Room, Wall } from './floorplan'
 import { interp, roomCenter, roomPoints, toWorld } from './geometry'
 import type { Selection } from './geometry'
+import { createBrickTexture, createBrickNormalMap, createPartitionTexture } from './textures'
+import { Door3D } from './Door3D'
 
 function roomColor(type: Room['type'], selected: boolean) {
   if (selected) return '#ffd36a'
@@ -56,7 +58,7 @@ function RoomFloor({ room, selected, showLabels, onSelect }: { room: Room; selec
   )
 }
 
-function WallSegment({ from, to, height, thickness, color, selected, onSelect }: { from: [number, number]; to: [number, number]; height: number; thickness: number; color: string; selected: boolean; onSelect: () => void }) {
+function WallSegment({ from, to, height, thickness, loadBearing, selected, onSelect }: { from: [number, number]; to: [number, number]; height: number; thickness: number; loadBearing?: boolean; selected: boolean; onSelect: () => void }) {
   const dx = to[0] - from[0]
   const dy = to[1] - from[1]
   const len = Math.hypot(dx, dy)
@@ -64,6 +66,16 @@ function WallSegment({ from, to, height, thickness, color, selected, onSelect }:
   const mid: [number, number] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]
   const [x, , z] = toWorld(mid[0], mid[1])
   const angle = Math.atan2(dy, dx)
+
+  // 承重墙：砖纹 + 法线贴图 + 更厚；非承重墙：浅色纹理
+  const finalThickness = loadBearing ? thickness * 1.3 : thickness
+  const color = loadBearing ? '#8B7355' : '#e8e0d5'
+
+  // 纹理：在 useMemo 中创建避免重生成
+  const brickTexture = useMemo(() => createBrickTexture(), [])
+  const brickNormalMap = useMemo(() => createBrickNormalMap(), [])
+  const partitionTexture = useMemo(() => createPartitionTexture(), [])
+
   return (
     <mesh
       position={[x, height / 2, z]}
@@ -75,15 +87,33 @@ function WallSegment({ from, to, height, thickness, color, selected, onSelect }:
         onSelect()
       }}
     >
-      <boxGeometry args={[len * SCALE, height, selected ? thickness * 1.45 : thickness]} />
-      <meshStandardMaterial color={selected ? '#ffb000' : color} roughness={0.64} emissive={selected ? '#553600' : '#000000'} emissiveIntensity={selected ? 0.1 : 0} />
+      <boxGeometry args={[len * SCALE, height, selected ? finalThickness * 1.45 : finalThickness]} />
+      {loadBearing ? (
+        <meshStandardMaterial
+          map={brickTexture}
+          normalMap={brickNormalMap}
+          normalScale={new THREE.Vector2(0.6, 0.6)}
+          roughness={0.75}
+          metalness={0}
+          emissive={selected ? '#553600' : '#000000'}
+          emissiveIntensity={selected ? 0.1 : 0}
+        />
+      ) : (
+        <meshStandardMaterial
+          map={partitionTexture}
+          color={selected ? '#ffb000' : color}
+          roughness={0.64}
+          emissive={selected ? '#553600' : '#000000'}
+          emissiveIntensity={selected ? 0.1 : 0}
+        />
+      )}
     </mesh>
   )
 }
 
 function WallMesh({ walls, selectedId, onSelectWall }: { walls: Wall[]; selectedId?: string; onSelectWall: (id: string) => void }) {
   const segments = useMemo(() => {
-    const out: Array<{ id: string; wallId: string; from: [number, number]; to: [number, number]; height: number; thickness: number; low: boolean }> = []
+    const out: Array<{ id: string; wallId: string; from: [number, number]; to: [number, number]; height: number; thickness: number; low: boolean; loadBearing?: boolean }> = []
     for (const wall of walls) {
       const from = wall.from
       const to = wall.to
@@ -94,16 +124,77 @@ function WallMesh({ walls, selectedId, onSelectWall }: { walls: Wall[]; selected
       const openings = [...(wall.openings ?? [])].sort((a, b) => a.start - b.start)
       let cursor = 0
       openings.forEach((op, idx) => {
-        if (op.start > cursor) out.push({ id: `${wall.id}-${idx}a`, wallId: wall.id, from: interp(from, to, cursor / len), to: interp(from, to, op.start / len), height, thickness, low })
+        if (op.start > cursor) out.push({ id: `${wall.id}-${idx}a`, wallId: wall.id, from: interp(from, to, cursor / len), to: interp(from, to, op.start / len), height, thickness, low, loadBearing: wall.loadBearing })
         cursor = Math.max(cursor, op.end)
       })
-      if (cursor < len) out.push({ id: `${wall.id}-tail`, wallId: wall.id, from: interp(from, to, cursor / len), to, height, thickness, low })
+      if (cursor < len) out.push({ id: `${wall.id}-tail`, wallId: wall.id, from: interp(from, to, cursor / len), to, height, thickness, low, loadBearing: wall.loadBearing })
     }
     return out
   }, [walls])
+
+  // 收集所有 door opening 的世界坐标，渲染 3D 门
+  const doors = useMemo(() => {
+    const out: Array<{ id: string; wallId: string; position: [number, number, number]; rotation: number; width: number; height: number; swing?: 'left' | 'right' }> = []
+    for (const wall of walls) {
+      const len = Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1])
+      if (len <= 0.001) continue
+      const low = wall.kind === 'low'
+      const wallHeight = wall.height ?? (low ? LOW_WALL_HEIGHT : WALL_HEIGHT)
+      const thickness = (wall.thickness ?? WALL_THICKNESS) * (low ? 0.82 : 1)
+      const openings = wall.openings ?? []
+      for (const opening of openings) {
+        if (opening.type !== 'door') continue
+        const doorMidT = ((opening.start + opening.end) / 2) / len
+        const doorWorldPos = interp(wall.from, wall.to, doorMidT)
+        const [wx, , wz] = toWorld(doorWorldPos[0], doorWorldPos[1])
+        const [dx, dy] = [wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]]
+        const wallAngle = Math.atan2(dy, dx)
+        // 门轴位置：沿墙法线方向偏移半个墙厚
+        const halfThick = (thickness * SCALE) / 2
+        const offsetX = -Math.sin(wallAngle) * halfThick
+        const offsetZ = Math.cos(wallAngle) * halfThick
+        const doorWidth = (opening.end - opening.start) * SCALE
+        // 门高：墙高的 90%
+        const doorHeight = wallHeight * 0.9
+        out.push({
+          id: `${wall.id}-door-${openings.indexOf(opening)}`,
+          wallId: wall.id,
+          position: [wx + offsetX, doorHeight / 2, wz + offsetZ],
+          rotation: wallAngle,
+          width: doorWidth,
+          height: doorHeight,
+          swing: opening.swing,
+        })
+      }
+    }
+    return out
+  }, [walls])
+
   return (
     <group>
-      {segments.map((s) => <WallSegment key={s.id} from={s.from} to={s.to} height={s.height} thickness={s.thickness} selected={selectedId === s.wallId} onSelect={() => onSelectWall(s.wallId)} color={s.low ? '#f4efe4' : '#fffaf0'} />)}
+      {segments.map((s) => (
+        <WallSegment
+          key={s.id}
+          from={s.from}
+          to={s.to}
+          height={s.height}
+          thickness={s.thickness}
+          loadBearing={s.loadBearing}
+          selected={selectedId === s.wallId}
+          onSelect={() => onSelectWall(s.wallId)}
+        />
+      ))}
+      {/* 3D 门 */}
+      {doors.map((door) => (
+        <Door3D
+          key={door.id}
+          position={door.position}
+          rotation={door.rotation}
+          width={door.width}
+          height={door.height}
+          swing={door.swing}
+        />
+      ))}
     </group>
   )
 }
